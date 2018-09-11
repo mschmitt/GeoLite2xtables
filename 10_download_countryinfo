@@ -1,0 +1,4 @@
+#!/bin/bash
+
+COUNTRYURL='http://download.geonames.org/export/dump/countryInfo.txt'
+curl $COUNTRYURL > /tmp/CountryInfo.txt

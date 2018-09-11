@@ -1,0 +1,99 @@
+#!/usr/bin/perl -w
+use strict;
+use diagnostics;
+eval "use Net::IP";
+if ($@) {
+	print STDERR "Please install the Perl Module Net::IP.\n";
+	print STDERR "E.g. on Debian: apt install libnet-ip-perl\n";
+	exit 1;
+}
+
+unless(-s "$ARGV[0]"){
+	print STDERR "Specify Country DB to use on the command line.\n";
+	exit 1;
+}
+
+# Prime country data with additional continent codes
+# http://download.geonames.org/export/dump/readme.txt
+my $countryinfo;
+$countryinfo->{'6255146'}->{'code'} = 'AF';
+$countryinfo->{'6255146'}->{'name'} = 'Africa';
+$countryinfo->{'6255147'}->{'code'} = 'AS';
+$countryinfo->{'6255147'}->{'name'} = 'Asia';
+$countryinfo->{'6255148'}->{'code'} = 'EU';
+$countryinfo->{'6255148'}->{'name'} = 'Europe';
+$countryinfo->{'6255149'}->{'code'} = 'NA';
+$countryinfo->{'6255149'}->{'name'} = 'North America';
+$countryinfo->{'6255150'}->{'code'} = 'SA';
+$countryinfo->{'6255150'}->{'name'} = 'South America';
+$countryinfo->{'6255151'}->{'code'} = 'OC';
+$countryinfo->{'6255151'}->{'name'} = 'Oceania';
+$countryinfo->{'6255152'}->{'code'} = 'AN';
+$countryinfo->{'6255152'}->{'name'} = 'Antarctica';
+
+# Read the countryinfo file
+open my $fh_in, "<", "$ARGV[0]" or die "Can't open $ARGV[0]: $!\n";
+foreach my $line (<$fh_in>){
+	chomp $line;
+	next if ($line =~ /^#/);
+	my @fields = (split "\t", $line);
+	my $code = $fields[0];
+	my $name = $fields[4];
+	my $id   = $fields[16];
+	$countryinfo->{$id}->{'code'} = $code;
+	$countryinfo->{$id}->{'name'} = $name;
+}
+close $fh_in;
+
+# Convert actual GeoLite2 data from STDIN
+my $counter;
+my $ip = Net::IP->new('0');
+foreach my $line (<STDIN>){
+	next unless ($line =~ /^\d/);
+	chomp $line;
+	$counter++;
+	my @fields = (split ",", $line);
+	my $network = $fields[0];
+	my $geoname_id = $fields[1];
+	my $registered_country_geoname_id = $fields[2];
+	my $represented_country_geoname_id = $fields[3];
+	my $is_anonymous_proxy = $fields[4];
+	my $is_satellite_provider = $fields[5];
+	$ip->set($network);
+	my $start_ip = $ip->ip();
+	my $end_ip = $ip->last_ip();
+	my $start_int = $ip->intip();
+	my $end_int = $ip->last_int();
+	my $code;
+	my $name;
+	if ($is_anonymous_proxy){
+		$code = "A1";
+		$name = "Anonymous Proxy";
+	}elsif ($is_satellite_provider){
+		$code = "A2";
+		$name = "Satellite Provider";
+	}elsif($countryinfo->{$represented_country_geoname_id}){
+		$code = $countryinfo->{$represented_country_geoname_id}->{'code'};
+		$name = $countryinfo->{$represented_country_geoname_id}->{'name'};
+	}elsif($countryinfo->{$registered_country_geoname_id}){
+		$code = $countryinfo->{$registered_country_geoname_id}->{'code'};
+		$name = $countryinfo->{$registered_country_geoname_id}->{'name'};
+	}elsif($countryinfo->{$geoname_id}){
+		$code = $countryinfo->{$geoname_id}->{'code'};
+		$name = $countryinfo->{$geoname_id}->{'name'};
+	}else{
+		print STDERR "Unknown Geoname ID, panicking. This is a bug.\n";
+		print STDERR "ID: $geoname_id\n";
+		print STDERR "ID Registered: $registered_country_geoname_id\n";
+		print STDERR "ID Represented $represented_country_geoname_id\n";
+		exit 1;
+	}
+
+	# Legacy GeoIP listing format:
+	# "1.0.0.0","1.0.0.255","16777216","16777471","AU","Australia"
+	printf "\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\"\n", 
+		$start_ip, $end_ip, $start_int, $end_int, $code, $name;
+	if ($counter % 10000 == 0) {
+		print STDERR "$counter\n";
+	}
+}

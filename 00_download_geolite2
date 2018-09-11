@@ -1,0 +1,7 @@
+#!/bin/bash -e
+
+TEMPZIP=$(mktemp)
+GEOLITEURL='https://geolite.maxmind.com/download/geoip/database/GeoLite2-Country-CSV.zip'
+curl $GEOLITEURL > $TEMPZIP
+unzip -d /tmp -o -j $TEMPZIP '*/GeoLite2-Country-Blocks*'
+rm $TEMPZIP
