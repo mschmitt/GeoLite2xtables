@@ -1,0 +1,12 @@
+#!/usr/bin/perl -a -F'\x{09}'
+use strict;
+
+# ./continents < /tmp/CountryInfo.txt | sort
+
+next if (/^#/);
+my $cont = $F[8];
+my $code = $F[0];
+my $name = $F[4];
+
+print "$cont $code $name\n";
+
