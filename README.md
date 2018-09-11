@@ -3,9 +3,6 @@
 This script aims to create a traditional GeoIP-CSV database from GeoIP's
 GeoLite2 database files, for use with xtables-addons' xt_geoip module.
 
-The unpleasant thing about GeoLite2 is that Maxmind claim to use Geonames 
-location IDs, but in addition to that, they use local ones for "EU" and "AP".
-
 For conversion, it is required to download an additional file with country
 names from Geonames.
 
