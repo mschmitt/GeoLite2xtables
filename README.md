@@ -3,6 +3,11 @@
 This script aims to create a traditional GeoIP-CSV database from GeoIP's
 GeoLite2 database files, for use with xtables-addons' xt_geoip module.
 
+Upstream work on the original conversion scripts in xtables-addons is in 
+progress as well:
+
+https://sourceforge.net/p/xtables-addons/xtables-addons/ci/master/tree/geoip/
+
 For conversion, it is required to download an additional file with country
 names from Geonames.
 
