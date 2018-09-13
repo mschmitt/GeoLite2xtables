@@ -1,7 +1,7 @@
 #!/usr/bin/perl -a -F'\x{09}'
 use strict;
 
-# ./continents < /tmp/CountryInfo.txt | sort
+# ./continents < /usr/share/xt_geoip/CountryInfo.txt | sort
 
 next if (/^#/);
 my $cont = $F[8];
