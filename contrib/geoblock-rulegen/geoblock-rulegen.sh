@@ -33,6 +33,7 @@ fi
 TEMPFILE=$(mktemp)
 curl $COUNTRYURL | egrep -v '^#' > "$TEMPFILE"
 
+printf "#!/bin/bash\n\n" 
 printf "%s -F GEOBLOCK\n" $IPTABLES
 printf "%s -N GEOBLOCK\n" $IPTABLES
 while IFS=$'\t' read CODE NAME CONT
