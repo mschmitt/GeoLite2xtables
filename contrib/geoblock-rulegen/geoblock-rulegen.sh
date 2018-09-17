@@ -10,6 +10,7 @@ COUNTRYURL='http://download.geonames.org/export/dump/countryInfo.txt'
 # Continents and countries that will not be blocked. Bash regex syntax.
 PERMIT_CONTINENTS="EU"
 PERMIT_COUNTRIES="DE|FR"
+ACTION="REJECT"
 
 LOG=0
 while getopts 46l OPT
@@ -34,6 +35,9 @@ TEMPFILE=$(mktemp)
 curl $COUNTRYURL | egrep -v '^#' > "$TEMPFILE"
 
 printf "#!/bin/bash\n\n" 
+printf "%s -F GEOTARGET\n" $IPTABLES
+printf "%s -N GEOTARGET\n" $IPTABLES
+printf "%s -A GEOTARGET -j %s\n\n" $IPTABLES "$ACTION"
 printf "%s -F GEOBLOCK\n" $IPTABLES
 printf "%s -N GEOBLOCK\n" $IPTABLES
 while IFS=$'\t' read CODE NAME CONT
@@ -44,8 +48,9 @@ do
 	then
 		printf "%s -A GEOBLOCK -m geoip --src-cc '%s' -j LOG --log-prefix 'GEOBLOCKED COUNTRY=%s '\n" "$IPTABLES" "$CODE" "$CODE" 
 	fi
-	printf "%s -A GEOBLOCK -m geoip --src-cc '%s' -j DROP -m comment --comment '%s'\n" "$IPTABLES" "$CODE" "$NAME"
+	printf "%s -A GEOBLOCK -m geoip --src-cc '%s' -j GEOTARGET -m comment --comment '%s'\n" "$IPTABLES" "$CODE" "$NAME"
 done < <(cut -f 1,5,9 < "$TEMPFILE" | sort)
+
 
 rm "$TEMPFILE"
 
