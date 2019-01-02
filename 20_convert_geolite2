@@ -1,17 +1,20 @@
 #!/usr/bin/perl -w
 use strict;
 use diagnostics;
-eval "use Net::IP";
-if ($@) {
-	print STDERR "Please install the Perl Module Net::IP.\n";
-	print STDERR "E.g. on Debian: apt install libnet-ip-perl\n";
-	exit 1;
-}
+use NetAddr::IP;
+use Text::CSV;
+use Getopt::Long;
 
-unless(-s "$ARGV[0]"){
+my $geoipnames = 0;
+
+GetOptions( 'geoipnames' => \$geoipnames ) or die("bad args");
+
+if ($#ARGV != 0) {
 	print STDERR "Specify Country DB to use on the command line.\n";
 	exit 1;
 }
+
+my $countryinfofile = $ARGV[0];
 
 # Prime country data with additional continent codes
 # http://download.geonames.org/export/dump/readme.txt
@@ -32,38 +35,52 @@ $countryinfo->{'6255152'}->{'code'} = 'AN';
 $countryinfo->{'6255152'}->{'name'} = 'Antarctica';
 
 # Read the countryinfo file
-open my $fh_in, "<", "$ARGV[0]" or die "Can't open $ARGV[0]: $!\n";
-foreach my $line (<$fh_in>){
+open my $fh_in, "<", $countryinfofile or die "Can't open ${countryinfofile}: $!\n";
+my $csv = Text::CSV->new({binary => 1});
+
+if (!$geoipnames) {
+    $csv->sep_char("\t");
+}
+# my @hdr = $csv->header($fh_in);
+foreach my $line (<$fh_in>) {
 	chomp $line;
-	next if ($line =~ /^#/);
-	my @fields = (split "\t", $line);
-	my $code = $fields[0];
-	my $name = $fields[4];
-	my $id   = $fields[16];
+	next if ($line =~ /^#/ || $line eq '');
+	$csv->parse($line) or die("bad countryinfo input");
+	my @fields = $csv->fields();
+	my $code;
+	my $name;
+	my $id;
+	if (!$geoipnames) {
+		$code = $fields[0];
+		$name = $fields[4];
+		$id   = $fields[16];
+	} else {
+		$code = $fields[4];
+		$name = $fields[5];
+		$id   = $fields[0];
+	}
 	$countryinfo->{$id}->{'code'} = $code;
 	$countryinfo->{$id}->{'name'} = $name;
 }
 close $fh_in;
 
+$csv->sep_char(',');
 # Convert actual GeoLite2 data from STDIN
 my $counter;
-my $ip = Net::IP->new('0');
-foreach my $line (<STDIN>){
-	next unless ($line =~ /^\d/);
-	chomp $line;
+my @hdr = $csv->header(*STDIN);
+while (my $fields = $csv->getline(*STDIN)){
 	$counter++;
-	my @fields = (split ",", $line);
-	my $network = $fields[0];
-	my $geoname_id = $fields[1];
-	my $registered_country_geoname_id = $fields[2];
-	my $represented_country_geoname_id = $fields[3];
-	my $is_anonymous_proxy = $fields[4];
-	my $is_satellite_provider = $fields[5];
-	$ip->set($network);
-	my $start_ip = $ip->ip();
-	my $end_ip = $ip->last_ip();
-	my $start_int = $ip->intip();
-	my $end_int = $ip->last_int();
+	my $network = $fields->[0];
+	my $geoname_id = $fields->[1];
+	my $registered_country_geoname_id = $fields->[2];
+	my $represented_country_geoname_id = $fields->[3];
+	my $is_anonymous_proxy = $fields->[4];
+	my $is_satellite_provider = $fields->[5];
+	my $ip = NetAddr::IP->new($network);
+	my $start_ip = $ip->canon();
+	my $end_ip = $ip->broadcast();
+	my $start_int = $ip->bigint();
+	my $end_int = $end_ip->bigint();
 	my $code;
 	my $name;
 	if ($is_anonymous_proxy){
@@ -92,7 +109,7 @@ foreach my $line (<STDIN>){
 	# Legacy GeoIP listing format:
 	# "1.0.0.0","1.0.0.255","16777216","16777471","AU","Australia"
 	printf "\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\"\n", 
-		$start_ip, $end_ip, $start_int, $end_int, $code, $name;
+		$start_ip, $end_ip->canon(), $start_int, $end_int, $code, $name;
 	if ($counter % 10000 == 0) {
 		print STDERR "$counter\n";
 	}
