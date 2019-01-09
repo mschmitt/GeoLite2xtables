@@ -30,8 +30,12 @@ use Text::CSV;
 use Getopt::Long;
 
 my $geoipnames = 0;
+my $quiet = 0;
 
-GetOptions( 'geoipnames' => \$geoipnames ) or die("bad args");
+GetOptions(
+    'geoipnames' => \$geoipnames,
+    'quiet' => \$quiet,
+    ) or die("bad args");
 
 if ($#ARGV != 0) {
 	print STDERR "Specify Country DB to use on the command line.\n";
@@ -134,7 +138,7 @@ while (my $fields = $csv->getline(*STDIN)){
 	# "1.0.0.0","1.0.0.255","16777216","16777471","AU","Australia"
 	printf "\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\"\n", 
 		$start_ip, $end_ip->canon(), $start_int, $end_int, $code, $name;
-	if ($counter % 10000 == 0) {
+	if (!$quiet && $counter % 10000 == 0) {
 		print STDERR "$counter\n";
 	}
 }
