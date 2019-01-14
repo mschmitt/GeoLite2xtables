@@ -23,7 +23,7 @@ IN THE LICENSE.txt FILE!!!
 * curl
 * unzip
 * Perl
-* Perl module Net::IP
+* Perl module NetAddr::IP
 
 ## Traditional workflow for updating the GeoIP database for xt_geoip
 
@@ -45,10 +45,9 @@ cat /tmp/GeoLite2-Country-Blocks-IPv{4,6}.csv |
 
 ## Known limitations
 
-The current implementation using Perl's Net::IP module is very slow even on
-very fast hardware. Database conversion takes at least several minutes. 
-A trivial progress meter is provided for your viewing pleasure. 
+None, thanks to an insane speed fix by John Hood, github.com/cgull.
 
 ## TODO
 
-Move away from Net::IP and maybe just bit-bang the CIDR-to-Range conversion.
+- Use Text::CSV for parsing the input data.
+- Merge/adopt cgull's geoipnames feature.

@@ -1,12 +1,13 @@
 #!/usr/bin/perl -w
 use strict;
 use diagnostics;
-eval "use Net::IP";
-if ($@) {
-	print STDERR "Please install the Perl Module Net::IP.\n";
-	print STDERR "E.g. on Debian: apt install libnet-ip-perl\n";
-	exit 1;
-}
+use NetAddr::IP;
+use Getopt::Long;
+
+my $quiet = 0;
+GetOptions(
+    'quiet' => \$quiet,
+    ) or die("bad args");
 
 unless(-s "$ARGV[0]"){
 	print STDERR "Specify Country DB to use on the command line.\n";
@@ -47,7 +48,6 @@ close $fh_in;
 
 # Convert actual GeoLite2 data from STDIN
 my $counter;
-my $ip = Net::IP->new('0');
 foreach my $line (<STDIN>){
 	next unless ($line =~ /^\d/);
 	chomp $line;
@@ -59,11 +59,11 @@ foreach my $line (<STDIN>){
 	my $represented_country_geoname_id = $fields[3];
 	my $is_anonymous_proxy = $fields[4];
 	my $is_satellite_provider = $fields[5];
-	$ip->set($network);
-	my $start_ip = $ip->ip();
-	my $end_ip = $ip->last_ip();
-	my $start_int = $ip->intip();
-	my $end_int = $ip->last_int();
+	my $ip = NetAddr::IP->new($network);
+	my $start_ip = $ip->canon();
+	my $end_ip = $ip->broadcast();
+	my $start_int = $ip->bigint();
+	my $end_int = $end_ip->bigint();
 	my $code;
 	my $name;
 	if ($is_anonymous_proxy){
@@ -92,8 +92,8 @@ foreach my $line (<STDIN>){
 	# Legacy GeoIP listing format:
 	# "1.0.0.0","1.0.0.255","16777216","16777471","AU","Australia"
 	printf "\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\"\n", 
-		$start_ip, $end_ip, $start_int, $end_int, $code, $name;
-	if ($counter % 10000 == 0) {
+		$start_ip, $end_ip->canon(), $start_int, $end_int, $code, $name;
+	if (!$quiet && $counter % 10000 == 0) {
 		print STDERR "$counter\n";
 	}
 }
