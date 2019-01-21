@@ -6,8 +6,10 @@ use Getopt::Long;
 use Text::CSV;
 
 my $quiet = 0;
+my $geoipnames = 0;
 GetOptions(
     'quiet' => \$quiet,
+    'geoipnames' => \$geoipnames
     ) or die("bad args");
 
 unless(-s "$ARGV[0]"){
@@ -35,18 +37,38 @@ $countryinfo->{'6255152'}->{'name'} = 'Antarctica';
 
 # Read the countryinfo file
 open my $fh_in, "<", "$ARGV[0]" or die "Can't open $ARGV[0]: $!\n";
+my $csv = Text::CSV->new({binary => 1});
+
+if (!$geoipnames) {
+    $csv->sep_char("\t");
+}
 foreach my $line (<$fh_in>){
 	chomp $line;
-	next if ($line =~ /^#/);
-	my @fields = (split "\t", $line);
-	my $code = $fields[0];
-	my $name = $fields[4];
-	my $id   = $fields[16];
+	next if ($line =~ /^#/ || $line eq '' || $line !~ /^[\d]/);
+	$csv->parse($line) or die("bad countryinfo input");
+	my @fields = $csv->fields();
+	my $code;
+	my $name;
+	my $id;
+	if (!$geoipnames) {
+		$code = $fields[0];
+		$name = $fields[4];
+		$id   = $fields[16];
+	} else {
+		$code = $fields[4];
+		$name = $fields[5];
+		if ($code eq '' || $name eq '') {
+			$code = $fields[2];
+			$name = $fields[3];
+		}
+		$id   = $fields[0];
+	}
 	$countryinfo->{$id}->{'code'} = $code;
 	$countryinfo->{$id}->{'name'} = $name;
 }
 close $fh_in;
 
+$csv->sep_char(',');
 # Convert actual GeoLite2 data from STDIN
 my $counter;
 foreach my $line (<STDIN>){
