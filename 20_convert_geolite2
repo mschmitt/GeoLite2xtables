@@ -3,6 +3,7 @@ use strict;
 use diagnostics;
 use NetAddr::IP;
 use Getopt::Long;
+use Text::CSV;
 
 my $quiet = 0;
 GetOptions(
@@ -51,8 +52,9 @@ my $counter;
 foreach my $line (<STDIN>){
 	next unless ($line =~ /^\d/);
 	chomp $line;
+	$csv->parse($line) or die("bad GeoIP2 input");
 	$counter++;
-	my @fields = (split ",", $line);
+	my @fields = $csv->fields();
 	my $network = $fields[0];
 	my $geoname_id = $fields[1];
 	my $registered_country_geoname_id = $fields[2];
