@@ -94,6 +94,7 @@ close $fh_in;
 
 $csv->sep_char(',');
 # Convert actual GeoLite2 data from STDIN
+my $csv_out = Text::CSV->new({always_quote => 1, binary => 1});
 my $counter;
 foreach my $line (<STDIN>){
 	next unless ($line =~ /^\d/);
@@ -139,8 +140,7 @@ foreach my $line (<STDIN>){
 
 	# Legacy GeoIP listing format:
 	# "1.0.0.0","1.0.0.255","16777216","16777471","AU","Australia"
-	printf "\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\"\n", 
-		$start_ip, $end_ip->canon(), $start_int, $end_int, $code, $name;
+	$csv_out->say(*STDOUT, [$start_ip, $end_ip->canon(), $start_int, $end_int, $code, $name]);
 	if (!$quiet && $counter % 10000 == 0) {
 		print STDERR "$counter\n";
 	}
