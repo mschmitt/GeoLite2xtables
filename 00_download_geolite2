@@ -1,7 +1,12 @@
 #!/bin/bash -e
 
+if [ -z "$1" ]; then
+  echo "You did not supply a MaxMind license key as the first parameter"
+  exit 1
+fi
+
 TEMPZIP=$(mktemp)
-GEOLITEURL='https://geolite.maxmind.com/download/geoip/database/GeoLite2-Country-CSV.zip'
+GEOLITEURL="https://download.maxmind.com/app/geoip_download?edition_id=GeoLite2-Country-CSV&license_key=$1&suffix=zip"
 curl $GEOLITEURL > $TEMPZIP
 unzip -d /tmp -o -j $TEMPZIP '*/GeoLite2-Country-Blocks*'
 rm $TEMPZIP
