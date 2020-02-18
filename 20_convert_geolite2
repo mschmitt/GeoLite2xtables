@@ -111,8 +111,8 @@ foreach my $line (<STDIN>){
 	my $ip = NetAddr::IP->new($network);
 	my $start_ip = $ip->canon();
 	my $end_ip = $ip->broadcast();
-	my $start_int = $ip->bigint();
-	my $end_int = $end_ip->bigint();
+	my $start_int = $ip->numeric();
+	my $end_int = $end_ip->numeric();
 	my $code;
 	my $name;
 	if ($is_anonymous_proxy){
