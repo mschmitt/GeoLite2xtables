@@ -1,12 +1,39 @@
-#!/usr/bin/perl -w
+#!/usr/bin/perl
+
+# MIT License
+
+# Copyright (c) 2018 Martin Schmitt
+
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+use warnings;
 use strict;
 use diagnostics;
 use NetAddr::IP;
 use Getopt::Long;
+use Text::CSV;
 
 my $quiet = 0;
+my $geoipnames = 0;
 GetOptions(
     'quiet' => \$quiet,
+    'geoipnames' => \$geoipnames
     ) or die("bad args");
 
 unless(-s "$ARGV[0]"){
@@ -34,25 +61,47 @@ $countryinfo->{'6255152'}->{'name'} = 'Antarctica';
 
 # Read the countryinfo file
 open my $fh_in, "<", "$ARGV[0]" or die "Can't open $ARGV[0]: $!\n";
+my $csv = Text::CSV->new({binary => 1});
+
+if (!$geoipnames) {
+    $csv->sep_char("\t");
+}
 foreach my $line (<$fh_in>){
 	chomp $line;
-	next if ($line =~ /^#/);
-	my @fields = (split "\t", $line);
-	my $code = $fields[0];
-	my $name = $fields[4];
-	my $id   = $fields[16];
+	next if ($line =~ /^#/ || $line eq '' || $line !~ /^[\d]/);
+	$csv->parse($line) or die("bad countryinfo input");
+	my @fields = $csv->fields();
+	my $code;
+	my $name;
+	my $id;
+	if (!$geoipnames) {
+		$code = $fields[0];
+		$name = $fields[4];
+		$id   = $fields[16];
+	} else {
+		$code = $fields[4];
+		$name = $fields[5];
+		if ($code eq '' || $name eq '') {
+			$code = $fields[2];
+			$name = $fields[3];
+		}
+		$id   = $fields[0];
+	}
 	$countryinfo->{$id}->{'code'} = $code;
 	$countryinfo->{$id}->{'name'} = $name;
 }
 close $fh_in;
 
+$csv->sep_char(',');
 # Convert actual GeoLite2 data from STDIN
+my $csv_out = Text::CSV->new({always_quote => 1, binary => 1});
 my $counter;
 foreach my $line (<STDIN>){
 	next unless ($line =~ /^\d/);
 	chomp $line;
+	$csv->parse($line) or die("bad GeoIP2 input");
 	$counter++;
-	my @fields = (split ",", $line);
+	my @fields = $csv->fields();
 	my $network = $fields[0];
 	my $geoname_id = $fields[1];
 	my $registered_country_geoname_id = $fields[2];
@@ -62,8 +111,8 @@ foreach my $line (<STDIN>){
 	my $ip = NetAddr::IP->new($network);
 	my $start_ip = $ip->canon();
 	my $end_ip = $ip->broadcast();
-	my $start_int = $ip->bigint();
-	my $end_int = $end_ip->bigint();
+	my $start_int = $ip->numeric();
+	my $end_int = $end_ip->numeric();
 	my $code;
 	my $name;
 	if ($is_anonymous_proxy){
@@ -91,8 +140,7 @@ foreach my $line (<STDIN>){
 
 	# Legacy GeoIP listing format:
 	# "1.0.0.0","1.0.0.255","16777216","16777471","AU","Australia"
-	printf "\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\"\n", 
-		$start_ip, $end_ip->canon(), $start_int, $end_int, $code, $name;
+	$csv_out->say(*STDOUT, [$start_ip, $end_ip->canon(), $start_int, $end_int, $code, $name]);
 	if (!$quiet && $counter % 10000 == 0) {
 		print STDERR "$counter\n";
 	}
