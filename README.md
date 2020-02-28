@@ -25,6 +25,8 @@ IN THE LICENSE.txt FILE!!!
 * Perl
 * Perl module NetAddr::IP
 
+* A valid geolite2 license from Maxmind
+
 ## Traditional workflow for updating the GeoIP database for xt_geoip
 
 ```
@@ -33,6 +35,8 @@ IN THE LICENSE.txt FILE!!!
 ```
 
 ## Workflow with conversion:
+
+* create geolite2.license with your correct license information
 
 ```
 cd /usr/local/src/GeoLite2xtables/
