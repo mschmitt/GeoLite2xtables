@@ -1,3 +1,5 @@
+# THIS PROJECT IS NOT BEING MAINTAINED. PLEASE FIX YOUR PRODUCTION ISSUES IN YOUR OWN FORK.
+
 # GeoLite2xtables
 
 This script aims to create a traditional GeoIP-CSV database from GeoIP's
